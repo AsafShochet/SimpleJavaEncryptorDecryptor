@@ -1,5 +1,8 @@
 /* Imports */
- 
+import org.apache.commons.codec.binary.Base64;
+import org.apache.commons.codec.binary.Base64InputStream;
+import org.apache.commons.codec.binary.Base64OutputStream;
+
 import java.io.File;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -59,15 +62,19 @@ public class cryptoClass {
 	}
 	static public void main(String args[]) throws Exception 
 	{
+		mainProgram();
+		
+		
+	}
+	
+	
+	public static void mainProgram() throws Exception
+	{
+
+
 		/* Constants */
 		/* File paths*/
-		String fileToEncrypt = "c:\\test\\crypto\\fileToEncrypt.txt";
-		String encryptedTextFile = "c:\\test\\crypto\\encryptedTextFile.txt";
-		String decryptedTextFile = "c:\\test\\crypto\\decryptedText.txt";
-		String keyStorePath = "c:\\test\\crypto\\keystore.jks";
-		String configurationFile = "c:\\test\\crypto\\cipherConfigurations.xml";
-		
-		/* Passwords */
+      	/* Passwords */
 		
 		
 		/* Configurations that are known to the sender */
@@ -75,6 +82,7 @@ public class cryptoClass {
 		senderConfigurations.put("fileToEncrypt", "c:\\test\\crypto\\fileToEncrypt.txt");
 		senderConfigurations.put("encryptedTextFile" ,"c:\\test\\crypto\\encryptedTextFile.txt");
 		senderConfigurations.put("configurationFile","c:\\test\\crypto\\cipherConfigurations.xml");
+		senderConfigurations.put("keyStorePath","c:\\test\\crypto\\keystore.jks");
 		senderConfigurations.put("keyStorePass","Gr8Pass");
 		senderConfigurations.put("senderAlias","encryptorKey");
 		senderConfigurations.put("enctyptorKeyPass","Gr8Pass");
@@ -94,7 +102,7 @@ public class cryptoClass {
 		
 		/*Data for configurations XML file*/
 		HashMap<String,String> configurationData = new HashMap();
-		configurationData.put("encryptionType","AES/CBC/NoPadding"); // AES algorithm in CBC mode Encryption algorithm
+		configurationData.put("encryptionType","AES/CBC/PKCS5PADDING"); // AES algorithm in CBC mode Encryption algorithm
 		configurationData.put("encryptionAlgoForKeyGen","AES");
 		configurationData.put("encryptionAlgoForSecretKey","RSA");
 		configurationData.put("digitalSignatureAlgorithm","MD5withRSA");
@@ -111,17 +119,15 @@ public class cryptoClass {
 		rnd.nextBytes(iv); // generate random iv
 		IvParameterSpec ivspec = new IvParameterSpec(iv); // initialize IV
 		
-		EncryptFile(fileToEncrypt,encryptedTextFile,encryptor,sharedKey, ivspec);  // Encrypts file with symetric key and writes cipher into encryptedTextFile
+		EncryptFile(senderConfigurations.get("fileToEncrypt"),senderConfigurations.get("encryptedTextFile"),encryptor,sharedKey, ivspec);  // Encrypts file with symetric key and writes cipher into encryptedTextFile
 	
 		/* Save Configurations into configuration file encrypted by public key of the receiver*/
 		KeyStore ks = KeyStore.getInstance("jks"); // Load public key from keyStore
-		FileInputStream ksStream = new FileInputStream(keyStorePath);
+		FileInputStream ksStream = new FileInputStream(senderConfigurations.get("keyStorePath"));
         ks.load(ksStream, senderConfigurations.get("keyStorePass").toCharArray());
         PublicKey receiverPublicKey = ks.getCertificate(senderConfigurations.get("receiverAlias")).getPublicKey(); //receiverPublicKey holds the public key for receiver
         PrivateKey receiverPrivateKey =  (PrivateKey) ks.getKey(receiverConfigurations.get("receiverAlias"), receiverConfigurations.get("receiverKeyPass").toCharArray()); //private key of receiver
         Cipher rsaEncryptor = Cipher.getInstance(configurationData.get("encryptionAlgoForSecretKey")); // encryptor for the secret key
-        
-        
         
         byte[] symetricKeyEncrypted = EncryptText(sharedKey.getEncoded(),rsaEncryptor,receiverPublicKey, null);  // Encrypts the symetric key using public key of the reciever
         byte[] symetricKeyDecrypted = DecryptText(symetricKeyEncrypted,rsaEncryptor,receiverPrivateKey, null);
@@ -133,18 +139,17 @@ public class cryptoClass {
         configurationData.put("symetricKeyEncrypted",symetricKeyEncrypted.toString());
         /* Save digital signature into digSin.txt and encrypt it by encryptor private key*/
         PrivateKey senderPrivateKey = (PrivateKey) ks.getKey(senderConfigurations.get("senderAlias"), senderConfigurations.get("enctyptorKeyPass").toCharArray()); //publicKey holds the public key for sender
-        byte[] digitalSignature = CalculateDigitalSignature(fileToEncrypt,configurationData.get("digitalSignatureAlgorithm"),senderPrivateKey);
+        byte[] digitalSignature = CalculateDigitalSignature(senderConfigurations.get("fileToEncrypt"),configurationData.get("digitalSignatureAlgorithm"),senderPrivateKey);
         configurationData.put("digitalSignature",digitalSignature.toString());
         
         /* Create configuration XML */ 
-		if (!CreateConfigurationXML(configurationData, configurationFile)) 
+		if (!CreateConfigurationXML(configurationData, senderConfigurations.get("configurationFile"))) 
 		{System.out.println("Error creating configuration file.\nAborting...\n");
 		return;
 		}
-		 	
 		
-        boolean decryptionOK = DecryptFileAndValidateSignature(keyStorePath,receiverConfigurations.get("keyStorePass"),receiverConfigurations.get("senderAlias"),receiverConfigurations.get("senderKeyPass"),receiverConfigurations.get("decryptedTextFile"), encryptedTextFile,encryptor,sharedKey,ivspec,configurationData.get("digitalSignatureAlgorithm"),digitalSignature);
-        
+        boolean decryptionOK = DecryptFileAndValidateSignature(receiverConfigurations.get("keyStorePath"),receiverConfigurations.get("keyStorePass"),receiverConfigurations.get("senderAlias"),receiverConfigurations.get("senderKeyPass"),receiverConfigurations.get("decryptedTextFile"), receiverConfigurations.get("encryptedTextFile"),encryptor,sharedKey,ivspec,configurationData.get("digitalSignatureAlgorithm"),digitalSignature);
+        System.out.println(decryptionOK);
         return;		
 	}
 	
@@ -160,7 +165,7 @@ public class cryptoClass {
         /* Verify digital signature */
         PublicKey senderPublicKey = ks.getCertificate(senderAlias).getPublicKey(); //publicKey holds the public key for sender
         boolean signatureValidated = ValidateDigitalSignature(decryptedFile,digitalSignatureAlgorithm,senderPublicKey,digitalSignature);
-        System.out.println(signatureValidated);
+       
         return signatureValidated;
 	}
 
@@ -195,26 +200,34 @@ public class cryptoClass {
 	        return sig;
 	}
 
-	/// Reads file and encrypts it line by line into 
+	/// Reads file and encrypts it line by line, also encodes it
 	private static void EncryptFile(String inputFile,String outputFile, Cipher encryptor, Key key, IvParameterSpec ivspec) throws Exception
 	{
 		assert (CreateFileIfNecessery(outputFile) == true); //creates output file if necessery
 		FileInputStream fis = new FileInputStream(inputFile); 
 		FileOutputStream fos = new FileOutputStream(outputFile);
-		CipherOutputStream cos = new CipherOutputStream(fos, encryptor);
+		Base64OutputStream b64os = new Base64OutputStream(fos);
+		CipherOutputStream cos = new CipherOutputStream(b64os, encryptor);
+		
 		encryptor.init(Cipher.ENCRYPT_MODE, key, ivspec);  // initialize cipher in ecryption mode
 		byte[] block = new byte[8];
 		int i;
+		
 		while ((i = fis.read(block)) != -1) { //read all blocks in file
 			{
+			System.out.println(Base64.decodeBase64(block));
 			cos.write(block,0, i); // write each block encrypted to the output file converted to base64
-			
+			System.out.println(block);
 			}
 		}
 		cos.close(); // close output file
+		b64os.close();
+		fis.close();
+		fos.close();
+		System.out.println("Output file: "+outputFile);
+		
 	}
-	
-	
+		
 	public static byte[] EncryptText(byte[] text, Cipher encryptor, Key key, IvParameterSpec ivspec) throws Exception
 	{
 		OutputStream os = new ByteArrayOutputStream();
@@ -250,25 +263,28 @@ public class cryptoClass {
 		is.close(); // close input file
 		cis.close();
 		return ((ByteArrayOutputStream) os).toByteArray();
-		
 	}
 		
 	
 	private static void DecryptFile(String inputFile,String outputFile, Cipher encryptor, Key key, IvParameterSpec ivspec) throws Exception
 	{
 		assert (CreateFileIfNecessery(outputFile) == true); //creates output file if necessery
-		FileInputStream fis = new FileInputStream(inputFile); 
+		FileInputStream fis = new FileInputStream(inputFile);
+		Base64InputStream b64os = new Base64InputStream(fis);
+		CipherInputStream cis = new CipherInputStream(b64os, encryptor);
+		
 		FileOutputStream fos = new FileOutputStream(outputFile);
-		CipherInputStream cis = new CipherInputStream(fis, encryptor);
+		
 		encryptor.init(Cipher.DECRYPT_MODE, key, ivspec); //initilize cipher in decryption mode with IV
 				
 		byte[] block = new byte[8];
 		int i;
 		while ((i = cis.read(block)) != -1) { //read all blocks in file
 			{
-				fos.write(block,0, i); // write each block encrypted to the output file
+				fos.write(block,0,i); // write each block encrypted to the output file
 			}
 		}
+		b64os.close();
 		fos.close(); // close output file
 		cis.close(); // close input file
 	}
@@ -320,9 +336,7 @@ public class cryptoClass {
 		Transformer transformer = transformerFactory.newTransformer();
 		DOMSource source = new DOMSource(doc);
 		StreamResult result = new StreamResult(new File(path));
- 
-		System.out.println(source.toString());
-		transformer.transform(source, result);
+ 		transformer.transform(source, result);
  
 		
 		return true;
