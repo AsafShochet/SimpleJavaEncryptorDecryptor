@@ -54,7 +54,6 @@ public class cryptoClass {
 	 * 4. Signs the clear text file using sender's private key
 	 * 5. Generates a configuration XML file (includes digital signature), to be sent to the receiver with the encrypted file
 	 */ 
-	 
 	static public boolean EncryptAndSignAFile(HashMap<String,String> senderConfigurations,HashMap<String,String> configurationData )
 	{
 		return true;
@@ -83,21 +82,22 @@ public class cryptoClass {
 		senderConfigurations.put("encryptedTextFile" ,"c:\\test\\crypto\\encryptedTextFile.txt");
 		senderConfigurations.put("configurationFile","c:\\test\\crypto\\cipherConfigurations.xml");
 		senderConfigurations.put("keyStorePath","c:\\test\\crypto\\keystore.jks");
-		senderConfigurations.put("keyStorePass","Gr8Pass");
+		senderConfigurations.put("keyStorePass","J34QqUf");
 		senderConfigurations.put("senderAlias","encryptorKey");
-		senderConfigurations.put("enctyptorKeyPass","Gr8Pass");
+		senderConfigurations.put("enctyptorKeyPass","U8MyK7");
 		senderConfigurations.put("receiverAlias","decryptorKey");
 		
 		/* Configurations that are known to the receiver */
 		HashMap<String,String> receiverConfigurations = new HashMap<>();
 		receiverConfigurations.put("encryptedTextFile" ,"c:\\test\\crypto\\encryptedTextFile.txt");
 		receiverConfigurations.put("configurationFile","c:\\test\\crypto\\cipherConfigurations.xml");
-		receiverConfigurations.put("keyStorePass","Gr8Pass");
+		receiverConfigurations.put("keyStorePass","J34QqUf");
 		receiverConfigurations.put("receiverAlias","decryptorKey");
-		receiverConfigurations.put("receiverKeyPass","HalvaOle");
+		receiverConfigurations.put("receiverKeyPass","Hu87Ql");
 		receiverConfigurations.put("decryptedTextFile","c:\\test\\crypto\\decryptedText.txt");
 		receiverConfigurations.put("keyStorePath","c:\\test\\crypto\\keystore.jks");
 		receiverConfigurations.put("senderAlias","encryptorKey");
+		
 		
 		
 		/*Data for configurations XML file*/
