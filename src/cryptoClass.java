@@ -35,9 +35,6 @@ import javax.crypto.KeyGenerator;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 
-import com.sun.org.apache.xerces.internal.impl.XML11DocumentScannerImpl;
-import com.sun.org.apache.xerces.internal.util.XML11Char;
-
 import java.security.KeyStore;
 import java.security.Key;
 import java.security.PrivateKey;
@@ -46,6 +43,20 @@ import java.security.SecureRandom;
 import java.security.Signature;
 public class cryptoClass {
 	
+	
+	/* Encrypts and Signs a clear text file to be send between a sender and a receiver, in the following way:
+	 * 1. Generates a symmetric key SK
+	 * 2. Uses SK to encrypt the clear text file
+	 * 3. Reads receiver's public key, and encrypts SK with it (Asymetric encryption)
+	 * 4. Signs the clear text file using sender's private key
+	 * 5. Generates a configuration XML file (includes digital signature), to be sent to the receiver with the encrypted file
+	 */ 
+	 
+	static public boolean EncryptAndSignAFile(HashMap<String,String> senderConfigurations,HashMap<String,String> configurationData )
+	{
+		return true;
+		
+	}
 	static public void main(String args[]) throws Exception 
 	{
 		/* Constants */
@@ -53,18 +64,35 @@ public class cryptoClass {
 		String fileToEncrypt = "c:\\test\\crypto\\fileToEncrypt.txt";
 		String encryptedTextFile = "c:\\test\\crypto\\encryptedTextFile.txt";
 		String decryptedTextFile = "c:\\test\\crypto\\decryptedText.txt";
-		String keyStorePath = "c:\\test\\crypto\\crypto\\keystore.jks";
+		String keyStorePath = "c:\\test\\crypto\\keystore.jks";
 		String configurationFile = "c:\\test\\crypto\\cipherConfigurations.xml";
 		
 		/* Passwords */
-		String keyStorePass= "Gr8Pass";
-		String encryptorAlias = "encryptorKey";
-		String enctyptorKeyPass = "Gr8Pass";
-		String decryptorAlias = "decryptorKey";
-		String decryptorKeyPass = "HalvaOle";
+		
+		
+		/* Configurations that are known to the sender */
+		HashMap<String,String> senderConfigurations = new HashMap<>();
+		senderConfigurations.put("fileToEncrypt", "c:\\test\\crypto\\fileToEncrypt.txt");
+		senderConfigurations.put("encryptedTextFile" ,"c:\\test\\crypto\\encryptedTextFile.txt");
+		senderConfigurations.put("configurationFile","c:\\test\\crypto\\cipherConfigurations.xml");
+		senderConfigurations.put("keyStorePass","Gr8Pass");
+		senderConfigurations.put("senderAlias","encryptorKey");
+		senderConfigurations.put("enctyptorKeyPass","Gr8Pass");
+		senderConfigurations.put("receiverAlias","decryptorKey");
+		
+		/* Configurations that are known to the receiver */
+		HashMap<String,String> receiverConfigurations = new HashMap<>();
+		receiverConfigurations.put("encryptedTextFile" ,"c:\\test\\crypto\\encryptedTextFile.txt");
+		receiverConfigurations.put("configurationFile","c:\\test\\crypto\\cipherConfigurations.xml");
+		receiverConfigurations.put("keyStorePass","Gr8Pass");
+		receiverConfigurations.put("receiverAlias","decryptorKey");
+		receiverConfigurations.put("receiverKeyPass","HalvaOle");
+		receiverConfigurations.put("decryptedTextFile","c:\\test\\crypto\\decryptedText.txt");
+		receiverConfigurations.put("keyStorePath","c:\\test\\crypto\\keystore.jks");
+		receiverConfigurations.put("senderAlias","encryptorKey");
+		
 		
 		/*Data for configurations XML file*/
-		
 		HashMap<String,String> configurationData = new HashMap();
 		configurationData.put("encryptionType","AES/CBC/NoPadding"); // AES algorithm in CBC mode Encryption algorithm
 		configurationData.put("encryptionAlgoForKeyGen","AES");
@@ -85,18 +113,18 @@ public class cryptoClass {
 		
 		EncryptFile(fileToEncrypt,encryptedTextFile,encryptor,sharedKey, ivspec);  // Encrypts file with symetric key and writes cipher into encryptedTextFile
 	
-		/* Save Configurations into configuration file encrypted by public key of the decryptor*/
+		/* Save Configurations into configuration file encrypted by public key of the receiver*/
 		KeyStore ks = KeyStore.getInstance("jks"); // Load public key from keyStore
 		FileInputStream ksStream = new FileInputStream(keyStorePath);
-        ks.load(ksStream, keyStorePass.toCharArray());
-        PublicKey decryptorPublicKey = ks.getCertificate(decryptorAlias).getPublicKey(); //decryptorPublicKey holds the public key for decryptor
-        PrivateKey decryptorPrivateKey =  (PrivateKey) ks.getKey(decryptorAlias, decryptorKeyPass.toCharArray()); //private key of decryptor
+        ks.load(ksStream, senderConfigurations.get("keyStorePass").toCharArray());
+        PublicKey receiverPublicKey = ks.getCertificate(senderConfigurations.get("receiverAlias")).getPublicKey(); //receiverPublicKey holds the public key for receiver
+        PrivateKey receiverPrivateKey =  (PrivateKey) ks.getKey(receiverConfigurations.get("receiverAlias"), receiverConfigurations.get("receiverKeyPass").toCharArray()); //private key of receiver
         Cipher rsaEncryptor = Cipher.getInstance(configurationData.get("encryptionAlgoForSecretKey")); // encryptor for the secret key
         
         
         
-        byte[] symetricKeyEncrypted = EncryptText(sharedKey.getEncoded(),rsaEncryptor,decryptorPublicKey, null);  // Encrypts the symetric key using public key of the reciever
-        byte[] symetricKeyDecrypted = DecryptText(symetricKeyEncrypted,rsaEncryptor,decryptorPrivateKey, null);
+        byte[] symetricKeyEncrypted = EncryptText(sharedKey.getEncoded(),rsaEncryptor,receiverPublicKey, null);  // Encrypts the symetric key using public key of the reciever
+        byte[] symetricKeyDecrypted = DecryptText(symetricKeyEncrypted,rsaEncryptor,receiverPrivateKey, null);
         Key symmetricKeyAfterDecription =  new SecretKeySpec(symetricKeyDecrypted, configurationData.get("encryptionAlgoForKeyGen")); //build a new secret key from text
         System.out.println(sharedKey);
         System.out.println(symmetricKeyAfterDecription);
@@ -104,8 +132,8 @@ public class cryptoClass {
         	System.out.println("Equal");
         configurationData.put("symetricKeyEncrypted",symetricKeyEncrypted.toString());
         /* Save digital signature into digSin.txt and encrypt it by encryptor private key*/
-        PrivateKey encryptorPrivateKey = (PrivateKey) ks.getKey(encryptorAlias, enctyptorKeyPass.toCharArray()); //publicKey holds the public key for encryptor
-        byte[] digitalSignature = CalculateDigitalSignature(fileToEncrypt,configurationData.get("digitalSignatureAlgorithm"),encryptorPrivateKey);
+        PrivateKey senderPrivateKey = (PrivateKey) ks.getKey(senderConfigurations.get("senderAlias"), senderConfigurations.get("enctyptorKeyPass").toCharArray()); //publicKey holds the public key for sender
+        byte[] digitalSignature = CalculateDigitalSignature(fileToEncrypt,configurationData.get("digitalSignatureAlgorithm"),senderPrivateKey);
         configurationData.put("digitalSignature",digitalSignature.toString());
         
         /* Create configuration XML */ 
@@ -113,33 +141,33 @@ public class cryptoClass {
 		{System.out.println("Error creating configuration file.\nAborting...\n");
 		return;
 		}
+		 	
 		
-		
-        boolean decryptionOK = DecryptFileAndValidateSignature(keyStorePath,keyStorePass,encryptorAlias,enctyptorKeyPass,decryptedTextFile, encryptedTextFile,encryptor,sharedKey,ivspec,configurationData.get("digitalSignatureAlgorithm"),digitalSignature);
+        boolean decryptionOK = DecryptFileAndValidateSignature(keyStorePath,receiverConfigurations.get("keyStorePass"),receiverConfigurations.get("senderAlias"),receiverConfigurations.get("senderKeyPass"),receiverConfigurations.get("decryptedTextFile"), encryptedTextFile,encryptor,sharedKey,ivspec,configurationData.get("digitalSignatureAlgorithm"),digitalSignature);
+        
         return;		
 	}
 	
-	private static boolean DecryptFileAndValidateSignature(String keyStorePath,String keyStorePass, String encryptorAlias, String enctyptorKeyPass, String decryptedFile, String encryptedTextFile,Cipher encryptor, Key sharedKey,IvParameterSpec ivspec, String digitalSignatureAlgorithm, byte[] digitalSignature) throws Exception {
+	private static boolean DecryptFileAndValidateSignature(String keyStorePath,String keyStorePass, String senderAlias, String enctyptorKeyPass, String decryptedFile, String encryptedTextFile,Cipher encryptor, Key sharedKey,IvParameterSpec ivspec, String digitalSignatureAlgorithm, byte[] digitalSignature) throws Exception {
 		
 		KeyStore ks = KeyStore.getInstance("jks"); // Load public key from keyStore
 		FileInputStream ksStream = new FileInputStream(keyStorePath);
         ks.load(ksStream, keyStorePass.toCharArray());
         
 		/* Decrypt file into decryptedFile */
-        Key key = ks.getKey(encryptorAlias, enctyptorKeyPass.toCharArray());
         DecryptFile(encryptedTextFile, decryptedFile, encryptor, sharedKey,ivspec);
         
         /* Verify digital signature */
-        PublicKey encryptorPublicKey = ks.getCertificate(encryptorAlias).getPublicKey(); //publicKey holds the public key for encryptor
-        boolean signatureValidated = ValidateDigitalSignature(decryptedFile,digitalSignatureAlgorithm,encryptorPublicKey,digitalSignature);
+        PublicKey senderPublicKey = ks.getCertificate(senderAlias).getPublicKey(); //publicKey holds the public key for sender
+        boolean signatureValidated = ValidateDigitalSignature(decryptedFile,digitalSignatureAlgorithm,senderPublicKey,digitalSignature);
         System.out.println(signatureValidated);
         return signatureValidated;
 	}
 
 	private static boolean ValidateDigitalSignature(String decryptedFile,
-			String digitalSignatureAlgorithm, PublicKey encryptorPublicKey, byte[] signatureToVerify) throws Exception {
+			String digitalSignatureAlgorithm, PublicKey senderPublicKey, byte[] signatureToVerify) throws Exception {
 		Signature dsa = Signature.getInstance(digitalSignatureAlgorithm);       /* Initializing the object with the digital signature algorithm */ 
-        dsa.initVerify(encryptorPublicKey); 
+        dsa.initVerify(senderPublicKey); 
         /* Update and sign the data */ 
         FileInputStream fis = new FileInputStream(decryptedFile); 
 		byte[] block = new byte[8];
@@ -152,10 +180,10 @@ public class cryptoClass {
         }
 
 	private static byte[] CalculateDigitalSignature(String fileToSign,
-			String digitalSignatureAlgorithm, PrivateKey encryptorPrivateKey)   throws Exception{
+			String digitalSignatureAlgorithm, PrivateKey senderPrivateKey)   throws Exception{
 		
 			Signature dsa = Signature.getInstance(digitalSignatureAlgorithm);       /* Initializing the object with the digital signature algorithm */
-		    dsa.initSign(encryptorPrivateKey); 
+		    dsa.initSign(senderPrivateKey); 
 	        /* Update and sign the data */ 
 	        FileInputStream fis = new FileInputStream(fileToSign); 
 			byte[] block = new byte[8];
