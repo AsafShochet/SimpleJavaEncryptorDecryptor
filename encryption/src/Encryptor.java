@@ -47,13 +47,30 @@ public class Encryptor {
 	 */
 	static public void main(String args[]) throws Exception 
 	{
+		
+		/* Input validation */
 		if (args.length!=3)
 		{
 			System.out.println("Wrong number of parameters, please insert the path of file to encrypt, path of keyStore.jks and output folder.\n" +
 					"Make sure that path is ended with '\\\\'.\n Example: c:\\\\test\\\\fileToEncrypt.txt c:\\\\test\\\\keyStore.jks c:\\\\outputFolder\\\\\nAborting...\n");
 			return;
 		}
-		
+
+		for (int j=0;j<2;j++)
+		{
+			File f = new File(args[j]);
+			if (!f.exists())
+			{
+				System.out.println("File "+args[j]+" doesn't exist.\nAborting...\n");
+				return;			
+			}
+
+		}
+		if (!Files.exists(Paths.get(args[2])))
+		{
+			System.out.println("Path "+args[2]+" doesn't exist.\nAborting...\n");
+			return;
+		}
 		String basePath = args[2];
 		/* Configurations that are known to the sender */
 		HashMap<String,String> senderConfigurations = new HashMap<>();
@@ -77,7 +94,7 @@ public class Encryptor {
 		configurationData.put("encryptionAlgoForSendingSharedKey","RSA/ECB/PKCS1Padding"); // Encryption algorithm for sending shared Key
 		configurationData.put("encryptionAlgoForSendingSharedKeyProvider","SunJCE"); //Setting provider for sending shared Key
 		
-		configurationData.put("digitalSignatureAlgorithm","MD5withRSA"); // Digital signature algorithm
+		configurationData.put("digitalSignatureAlgorithm","SHA256withRSA"); // Digital signature algorithm
 		System.out.println("============================");
 		System.out.println("== Sender\\Encryptor side ==");
 		System.out.println("============================");

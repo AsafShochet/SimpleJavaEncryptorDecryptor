@@ -33,6 +33,7 @@ public class Decryptor {
     
 	public static void main(String args[]) throws Exception
 	{
+		/* Input validation */
 		if (args.length!=2)
 		{
 			System.out.println("Wrong number of parameters, please insert the path of encryptedTextFile.txt, cipherConfigurations.xml and the path for keystore file.\n" +
@@ -45,6 +46,12 @@ public class Decryptor {
 		{
 			System.out.println("Path "+args[0]+" doesn't exist.\nAborting...\n");
 			return;
+		}
+		File f = new File(args[1]);
+		if (!f.exists())
+		{
+			System.out.println("Keystore "+args[1]+" doesn't exist.\nAborting...\n");
+			return;			
 		}
 		String basePath = args[0];
 		String keyStore = args[1];
