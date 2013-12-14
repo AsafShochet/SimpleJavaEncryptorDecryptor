@@ -35,10 +35,8 @@ import java.security.Signature;
  * @author Asaf Shochet
  * @email wasafa1@gmail.com
  * @Date 14/12/2013
- *
  */
-public class encrypt {
-	
+public class Encryptor {
 	/*
 	 * Main access point to the program
 	 * Contains:

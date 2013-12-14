@@ -29,7 +29,7 @@ import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
 
 
-public class decrypt {
+public class Decryptor {
     
 	public static void main(String args[]) throws Exception
 	{
@@ -47,6 +47,7 @@ public class decrypt {
 			return;
 		}
 		String basePath = args[0];
+		String keyStore = args[1];
 		basePath = "c:\\test\\crypto\\";
 		
 		System.out.println("-------------------------------------------------------------");
@@ -61,10 +62,9 @@ public class decrypt {
 		receiverConfigurations.put("receiverAlias","decryptorKey");
 		receiverConfigurations.put("receiverKeyPass","Hu87Ql");
 		receiverConfigurations.put("decryptedTextFile",basePath+"decryptedText.txt");
-		receiverConfigurations.put("keyStorePath",basePath+"keystore.jks");
+		receiverConfigurations.put("keyStorePath",keyStore);
 		receiverConfigurations.put("senderAlias","encryptorKey");
 		
-	
 		DecryptFileAndValidateSignature(receiverConfigurations);
 		System.out.println("-------------------------------------------------------------");
 	}
