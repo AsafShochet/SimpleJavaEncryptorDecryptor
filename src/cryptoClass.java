@@ -6,32 +6,22 @@ import org.apache.commons.codec.binary.Base64OutputStream;
 import java.io.File;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
-import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.transform.Transformer;
-import javax.xml.transform.TransformerException;
 import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
  
-import org.w3c.dom.Attr;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
  
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.nio.charset.Charset;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.HashMap;
-import java.util.List;
-
 import javax.crypto.Cipher;
 import javax.crypto.CipherInputStream;
 import javax.crypto.CipherOutputStream;
@@ -42,7 +32,6 @@ import javax.crypto.spec.SecretKeySpec;
 import java.security.KeyStore;
 import java.security.Key;
 import java.security.PrivateKey;
-import java.security.Provider;
 import java.security.PublicKey;
 import java.security.SecureRandom;
 import java.security.Signature;
@@ -59,7 +48,7 @@ public class cryptoClass {
 	 * Main access point to the program
 	 * Contains:
 	 * File variables are set (names, paths, passwords)
-	 * Cipher algorithms (Algorithms,Providers,Padding configurations)
+	 * Cipher algorithms (Algorithms,Providers,Padding configurations) - can change them easily
 	 * Data visible to sender
 	 * Data visible to receiver
 	 */
