@@ -42,6 +42,7 @@ import javax.crypto.spec.SecretKeySpec;
 import java.security.KeyStore;
 import java.security.Key;
 import java.security.PrivateKey;
+import java.security.Provider;
 import java.security.PublicKey;
 import java.security.SecureRandom;
 import java.security.Signature;
@@ -53,6 +54,64 @@ import java.security.Signature;
  */
 public class cryptoClass {
 	
+
+	/*
+	 * Main access point to the program
+	 * Contains:
+	 * File variables are set (names, paths, passwords)
+	 * Cipher algorithms (Algorithms,Providers,Padding configurations)
+	 * Data visible to sender
+	 * Data visible to receiver
+	 */
+	static public void main(String args[]) throws Exception 
+	{
+		/* Configurations that are known to the sender */
+		HashMap<String,String> senderConfigurations = new HashMap<>();
+		senderConfigurations.put("fileToEncrypt", "c:\\test\\crypto\\fileToEncrypt.txt");
+		senderConfigurations.put("encryptedTextFile" ,"c:\\test\\crypto\\encryptedTextFile.txt");
+		senderConfigurations.put("configurationFile","c:\\test\\crypto\\cipherConfigurations.xml");
+		senderConfigurations.put("keyStorePath","c:\\test\\crypto\\keystore.jks");
+		senderConfigurations.put("keyStorePass","J34QqUf");
+		senderConfigurations.put("senderAlias","encryptorKey");
+		senderConfigurations.put("enctyptorKeyPass","U8MyK7");
+		senderConfigurations.put("receiverAlias","decryptorKey");
+		
+		/* Configurations that are known to the receiver */
+		HashMap<String,String> receiverConfigurations = new HashMap<>();
+		receiverConfigurations.put("encryptedTextFile" ,"c:\\test\\crypto\\encryptedTextFile.txt");
+		receiverConfigurations.put("configurationFile","c:\\test\\crypto\\cipherConfigurations.xml");
+		receiverConfigurations.put("keyStorePass","J34QqUf");
+		receiverConfigurations.put("receiverAlias","decryptorKey");
+		receiverConfigurations.put("receiverKeyPass","Hu87Ql");
+		receiverConfigurations.put("decryptedTextFile","c:\\test\\crypto\\decryptedText.txt");
+		receiverConfigurations.put("keyStorePath","c:\\test\\crypto\\keystore.jks");
+		receiverConfigurations.put("senderAlias","encryptorKey");
+		
+		/*Data for configurations XML file (known to sender)*/
+		HashMap<String,String> configurationData = new HashMap<>();
+		configurationData.put("encryptionAlgoForSymmetricKey","AES/CBC/PKCS5PADDING"); // Algorithm for symmetric encryption of the text file
+		configurationData.put("encryptionAlgoForSymmetricKeyProvider","SunJCE"); //Setting provider for symmmetric encryption
+		 
+		configurationData.put("encryptionAlgoForKeyGeneration","AES"); // Encryption algorithm for key generation
+		configurationData.put("encryptionAlgoForKeyGenerationProvider","SunJCE"); //Setting provider for key generation
+		
+		configurationData.put("encryptionAlgoForSendingSharedKey","RSA/ECB/PKCS1Padding"); // Encryption algorithm for sending shared Key
+		configurationData.put("encryptionAlgoForSendingSharedKeyProvider","SunJCE"); //Setting provider for sending shared Key
+		
+		configurationData.put("digitalSignatureAlgorithm","MD5withRSA"); // Digital signature algorithm
+	    
+		System.out.println("============================");
+		System.out.println("== Sender\\Encryptor side ==");
+		System.out.println("============================");
+		EncryptAndSignAFile(senderConfigurations,configurationData,receiverConfigurations);
+		System.out.println("-------------------------------------------------------------");
+		System.out.println("==============================");
+		System.out.println("== Receiver\\Decryptor side ==");
+		System.out.println("==============================");
+		DecryptFileAndValidateSignature(receiverConfigurations);
+		System.out.println("-------------------------------------------------------------");
+		
+		}
 	/* 
 	 * Encrypts and Signs a clear text file to be send between a sender and a receiver, in the following way:
 	 * 1. Generates a symmetric key SK
@@ -64,8 +123,9 @@ public class cryptoClass {
 	static public boolean EncryptAndSignAFile(HashMap<String,String> senderConfigurations,HashMap<String,String> configurationData,HashMap<String,String> receiverConf) throws Exception
 	{
 		/* Generate symmetric key for AES-CBC encryption of the file */
-		Key sharedKey = (KeyGenerator.getInstance(configurationData.get("encryptionAlgoForKeyGen"))).generateKey(); // generate symetric key
-		Cipher encryptor = Cipher.getInstance(configurationData.get("encryptionType"));
+		
+		Key sharedKey = KeyGenerator.getInstance(configurationData.get("encryptionAlgoForKeyGeneration"), configurationData.get("encryptionAlgoForKeyGenerationProvider")).generateKey(); // generate symetric key
+		Cipher encryptor = Cipher.getInstance(configurationData.get("encryptionAlgoForSymmetricKey"), configurationData.get("encryptionAlgoForSymmetricKeyProvider"));
 		byte[] iv = new byte[encryptor.getBlockSize()]; // create IV byte array
 		SecureRandom rnd = new SecureRandom();
 		rnd.nextBytes(iv); // generate random iv
@@ -82,7 +142,7 @@ public class cryptoClass {
         ks.load(ksStream, senderConfigurations.get("keyStorePass").toCharArray());
         PublicKey receiverPublicKey = ks.getCertificate(senderConfigurations.get("receiverAlias")).getPublicKey(); //receiverPublicKey holds the public key for receiver
      
-        Cipher rsaEncryptor = Cipher.getInstance(configurationData.get("encryptionAlgoForSecretKey")); // encryptor for the secret key
+        Cipher rsaEncryptor = Cipher.getInstance(configurationData.get("encryptionAlgoForSendingSharedKey"), configurationData.get("encryptionAlgoForSendingSharedKeyProvider")); // encryptor for the secret key
         byte[] symetricKeyEncrypted = EncryptText(sharedKey.getEncoded(),rsaEncryptor,receiverPublicKey, null);  // Encrypts the symetric key using public key of the reciever
         System.out.println("Encrypted symmetric key using receiver's public key.");
         configurationData.put("symetricKeyEncrypted",Base64.encodeBase64String(symetricKeyEncrypted));
@@ -131,12 +191,12 @@ public class cryptoClass {
 		}
 		System.out.println("Read data Cipher configurations XML."); 		
 		/* Initialize the encryptor */
-		Cipher encryptor = Cipher.getInstance(cipherConfigurations.get("encryptionType"));
+		Cipher encryptor = Cipher.getInstance(cipherConfigurations.get("encryptionAlgoForSymmetricKey"), cipherConfigurations.get("encryptionAlgoForSymmetricKeyProvider"));
 
         /* Get data from cipher configurations XML*/
 		byte[] symetricKeyEncrypted =Base64.decodeBase64(cipherConfigurations.get("symetricKeyEncrypted"));
 		/* Initialize the symmetric key encryptor */
-		Cipher rsaEncryptor = Cipher.getInstance(cipherConfigurations.get("encryptionAlgoForSecretKey")); // encryptor for the secret key
+		Cipher rsaEncryptor = Cipher.getInstance(cipherConfigurations.get("encryptionAlgoForSendingSharedKey"), cipherConfigurations.get("encryptionAlgoForSendingSharedKeyProvider")); // encryptor for the secret key
 	    byte[] symetricKeyDecrypted = DecryptText(symetricKeyEncrypted,rsaEncryptor,receiverPrivateKey, null);
         
 		byte[] ivConfig =Base64.decodeBase64(cipherConfigurations.get("ivspec"));
@@ -144,7 +204,7 @@ public class cryptoClass {
 		IvParameterSpec ivSpec = new IvParameterSpec(iv);
 		byte[] digitalSignature = Base64.decodeBase64(cipherConfigurations.get("digitalSignature"));
 		
-		Key symmetricKeyAfterDecription =  new SecretKeySpec(symetricKeyDecrypted, cipherConfigurations.get("encryptionAlgoForKeyGen")); //build a new secret key from text
+		Key symmetricKeyAfterDecription =  new SecretKeySpec(symetricKeyDecrypted, cipherConfigurations.get("encryptionAlgoForKeyGeneration")); //build a new secret key from text
 		System.out.println("Decrypted symmetric key using his own private key");
 		
        	/* Decrypt file into decryptedFile */
@@ -168,49 +228,6 @@ public class cryptoClass {
        
        }
 	
-	static public void main(String args[]) throws Exception 
-	{
-		/* Configurations that are known to the sender */
-		HashMap<String,String> senderConfigurations = new HashMap<>();
-		senderConfigurations.put("fileToEncrypt", "c:\\test\\crypto\\fileToEncrypt.txt");
-		senderConfigurations.put("encryptedTextFile" ,"c:\\test\\crypto\\encryptedTextFile.txt");
-		senderConfigurations.put("configurationFile","c:\\test\\crypto\\cipherConfigurations.xml");
-		senderConfigurations.put("keyStorePath","c:\\test\\crypto\\keystore.jks");
-		senderConfigurations.put("keyStorePass","J34QqUf");
-		senderConfigurations.put("senderAlias","encryptorKey");
-		senderConfigurations.put("enctyptorKeyPass","U8MyK7");
-		senderConfigurations.put("receiverAlias","decryptorKey");
-		
-		/* Configurations that are known to the receiver */
-		HashMap<String,String> receiverConfigurations = new HashMap<>();
-		receiverConfigurations.put("encryptedTextFile" ,"c:\\test\\crypto\\encryptedTextFile.txt");
-		receiverConfigurations.put("configurationFile","c:\\test\\crypto\\cipherConfigurations.xml");
-		receiverConfigurations.put("keyStorePass","J34QqUf");
-		receiverConfigurations.put("receiverAlias","decryptorKey");
-		receiverConfigurations.put("receiverKeyPass","Hu87Ql");
-		receiverConfigurations.put("decryptedTextFile","c:\\test\\crypto\\decryptedText.txt");
-		receiverConfigurations.put("keyStorePath","c:\\test\\crypto\\keystore.jks");
-		receiverConfigurations.put("senderAlias","encryptorKey");
-		
-		/*Data for configurations XML file*/
-		HashMap<String,String> configurationData = new HashMap<>();
-		configurationData.put("encryptionType","AES/CBC/PKCS5PADDING"); // AES algorithm in CBC mode Encryption algorithm
-		configurationData.put("encryptionAlgoForKeyGen","AES");
-		configurationData.put("encryptionAlgoForSecretKey","RSA/ECB/PKCS1Padding");
-		configurationData.put("digitalSignatureAlgorithm","MD5withRSA");
-	    
-		System.out.println("============================");
-		System.out.println("== Sender\\Encryptor side ==");
-		System.out.println("============================");
-		EncryptAndSignAFile(senderConfigurations,configurationData,receiverConfigurations);
-		System.out.println("-------------------------------------------------------------");
-		System.out.println("==============================");
-		System.out.println("== Receiver\\Decryptor side ==");
-		System.out.println("==============================");
-		DecryptFileAndValidateSignature(receiverConfigurations);
-		System.out.println("-------------------------------------------------------------");
-		
-		}
 		
 	/* 
 	 * Simulates the process where the receiver is calculating the signature of a message he received
